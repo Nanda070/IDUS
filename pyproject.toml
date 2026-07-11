@@ -1,0 +1,21 @@
+[project]
+name = "idus"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11.15"
+dependencies = [
+    "faster-whisper>=1.2.1",
+    "httpx>=0.28.1",
+    "numpy>=2.4.6",
+    "ollama>=0.6.2",
+    "omegaconf>=2.3.1",
+    "onnxruntime>=1.27.0",
+    "openwakeword>=0.6.0",
+    "piper-tts>=1.4.2",
+    "python-dotenv>=1.2.2",
+    "python-telegram-bot>=22.8",
+    "silero-vad>=6.2.1",
+    "sounddevice>=0.5.5",
+    "telethon>=1.44.0",
+]

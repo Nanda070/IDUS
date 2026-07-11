@@ -1,0 +1,11 @@
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: idus-searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    restart: unless-stopped
