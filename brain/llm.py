@@ -10,6 +10,7 @@ import ollama
 from memory.store import list_facts, list_recent_episodes, log_interaction
 from tools.automation import list_automations, set_automation_rule
 from tools.calculator import calculate
+from tools.food_ordering import order_food
 from tools.memory_tools import remember
 from tools.messaging import send_message
 from tools.notes import get_recent_notes, save_note
@@ -36,13 +37,17 @@ TOOLS = [
     empty_shopping_list,
     save_note,
     get_recent_notes,
+    order_food,
 ]
 TOOL_FUNCTIONS = {fn.__name__: fn for fn in TOOLS}
 
 # Tools whose calls pause execution and ask the user to confirm before running -
-# for actions with real-world consequences (sending a message, later: ordering,
-# controlling devices). Confirmation is enforced in code, not by the model.
-SENSITIVE_TOOLS = {"send_message"}
+# for actions with real-world consequences (sending a message, ordering food,
+# later: controlling devices). Confirmation is enforced in code, not by the
+# model. Note order_food itself structurally cannot reach checkout/payment
+# regardless of confirmation - this gate is about touching the real Wolt
+# account/cart at all, not about the (nonexistent) risk of an accidental order.
+SENSITIVE_TOOLS = {"send_message", "order_food"}
 
 MAX_TOOL_ROUNDS = 6
 
@@ -60,10 +65,13 @@ SYSTEM_PROMPT = (
     "извиняйся за тон вопроса. Свободно используй разговорную лексику и мат, если это уместно "
     "по контексту разговора.\n"
     "- У тебя есть инструменты: время, дата, калькулятор, таймер, поиск в интернете, память, "
-    "напоминания, отправка сообщений, автоматизации, список покупок, заметки - используй их "
-    "вместо того, чтобы угадывать. Ищи в интернете, если вопрос про текущие события, погоду, "
-    "цены или любые факты, которые могли измениться. Управление устройствами в доме пока не "
-    "реализовано - если просят такое, честно скажи, что этой функции пока нет.\n"
+    "напоминания, отправка сообщений, автоматизации, список покупок, заметки, заказ еды - "
+    "используй их вместо того, чтобы угадывать. Ищи в интернете, если вопрос про текущие "
+    "события, погоду, цены или любые факты, которые могли измениться. Управление устройствами "
+    "в доме пока не реализовано - если просят такое, честно скажи, что этой функции пока нет.\n"
+    "- order_food только собирает корзину в Wolt и никогда не оформляет и не оплачивает заказ - "
+    "это физически невозможно, не только запрещено. Всегда говори пользователю, что корзину "
+    "нужно проверить и оформить самому.\n"
     "- Ты умеешь готовить рецепты пошагово (называешь один шаг, ждёшь, когда пользователь "
     "скажет, что готов к следующему, и при необходимости ставишь таймер на шаг через "
     "set_timer), переводить фразы между языками на лету, и рассказывать шутки/забавные факты/"
@@ -71,6 +79,9 @@ SYSTEM_PROMPT = (
     "- Если пользователь просит делать что-то регулярно каждый день в определённое время "
     "(например, «каждое утро говори погоду») - используй set_automation_rule вместо того, чтобы "
     "просто ответить один раз.\n"
+    "- Если сообщение начинается с «[Говорит ИМЯ]» - система распознала голос говорящего по тембру. "
+    "Это не то, что человек произнёс вслух, а служебная пометка - учитывай, кто с тобой "
+    "говорит, но не повторяй эту пометку в ответе.\n"
     "- Некоторые действия (например, отправка сообщений) система сама останавливает и просит "
     "пользователя подтвердить перед выполнением - тебе не нужно спрашивать разрешения самому, "
     "просто вызови нужный инструмент, если пользователь просит такое действие.\n"
@@ -116,6 +127,11 @@ def _confirmation_question(name: str, arguments: dict) -> str:
         to = arguments.get("to", "адресату")
         text = arguments.get("text", "")
         return f"Отправить {to} сообщение: «{text}»? Скажи да или нет."
+    if name == "order_food":
+        restaurant = arguments.get("restaurant", "ресторана")
+        items = arguments.get("items", [])
+        items_text = ", ".join(items) if isinstance(items, list) else str(items)
+        return f"Собрать корзину в Wolt из «{restaurant}»: {items_text}? Оплату потом делаешь сам. Скажи да или нет."
     return f"Точно выполнить действие «{name}»? Скажи да или нет."
 
 

@@ -20,7 +20,14 @@ import sounddevice as sd
 
 from brain.llm import Brain
 from brain.reflection import run_reflection
-from memory.store import get_due_automation_rules, list_due_reminders, mark_automation_rule_run, mark_reminder_done
+from memory.store import (
+    get_due_automation_rules,
+    list_due_reminders,
+    load_speaker_embeddings,
+    mark_automation_rule_run,
+    mark_reminder_done,
+)
+from voice.speaker_id import SpeakerIdentifier
 from voice.stt import Transcriber
 from voice.tts import Speaker, is_cyrillic
 from voice.vad import CHUNK_SAMPLES as VAD_CHUNK
@@ -47,6 +54,8 @@ def main() -> None:
     transcriber = Transcriber()
     speaker = Speaker()
     brain = Brain()
+    speaker_id = SpeakerIdentifier()
+    speaker_id.load_enrolled(load_speaker_embeddings())
 
     state = STATE_IDLE
     wake_buf = np.zeros(0, dtype=np.float32)
@@ -206,9 +215,15 @@ def main() -> None:
                     print("(nothing recognized, back to idle)")
                     continue
 
+                speaker_name, speaker_score = speaker_id.identify(audio)
+                print(f"[speaker] {speaker_name!r} (score={speaker_score:.2f})")
+                llm_input = text
+                if speaker_name:
+                    llm_input = f"[Говорит {speaker_name}] {text}"
+
                 llm_start = time.monotonic()
                 try:
-                    reply = brain.reply(text)
+                    reply = brain.reply(llm_input)
                 except Exception as exc:
                     print(f"(LLM error: {exc})")
                     reply = "Извини, не могу сейчас связаться с мозгом." if is_cyrillic(text) else "Sorry, I can't reach my brain right now."

@@ -65,6 +65,21 @@ def _connect() -> sqlite3.Connection:
         "text TEXT NOT NULL"
         ")"
     )
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS speakers (name TEXT PRIMARY KEY, embedding BLOB NOT NULL)"
+    )
+    # Reminders/automations are delivered independently per channel (voice vs
+    # Telegram) so one doesn't "steal" the delivery from the other - these
+    # columns were added after the tables already existed, so ALTER TABLE
+    # (ignoring the harmless "duplicate column" error on repeat runs).
+    for statement in (
+        "ALTER TABLE reminders ADD COLUMN telegram_sent INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE automation_rules ADD COLUMN telegram_last_run_date TEXT",
+    ):
+        try:
+            conn.execute(statement)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return conn
 
 
@@ -124,6 +139,23 @@ def mark_reminder_done(reminder_id: int) -> None:
         conn.commit()
 
 
+def list_due_reminders_telegram(now_iso: str) -> list[tuple[int, str]]:
+    """Independent from list_due_reminders()/mark_reminder_done() (voice channel) -
+    tracked via a separate telegram_sent flag so both channels reliably deliver."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, text FROM reminders WHERE telegram_sent = 0 AND due_at <= ? ORDER BY due_at",
+            (now_iso,),
+        ).fetchall()
+    return rows
+
+
+def mark_reminder_telegram_sent(reminder_id: int) -> None:
+    with _connect() as conn:
+        conn.execute("UPDATE reminders SET telegram_sent = 1 WHERE id = ?", (reminder_id,))
+        conn.commit()
+
+
 def add_automation_rule(time_of_day: str, action: str) -> int:
     with _connect() as conn:
         cursor = conn.execute(
@@ -165,6 +197,25 @@ def get_due_automation_rules(current_time: str, today: str) -> list[tuple[int, s
 def mark_automation_rule_run(rule_id: int, today: str) -> None:
     with _connect() as conn:
         conn.execute("UPDATE automation_rules SET last_run_date = ? WHERE id = ?", (today, rule_id))
+        conn.commit()
+
+
+def get_due_automation_rules_telegram(current_time: str, today: str) -> list[tuple[int, str]]:
+    """Independent from get_due_automation_rules()/mark_automation_rule_run() (voice
+    channel) - tracked via a separate telegram_last_run_date column."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, action FROM automation_rules "
+            "WHERE enabled = 1 AND time_of_day <= ? "
+            "AND (telegram_last_run_date IS NULL OR telegram_last_run_date != ?)",
+            (current_time, today),
+        ).fetchall()
+    return rows
+
+
+def mark_automation_rule_telegram_run(rule_id: int, today: str) -> None:
+    with _connect() as conn:
+        conn.execute("UPDATE automation_rules SET telegram_last_run_date = ? WHERE id = ?", (today, rule_id))
         conn.commit()
 
 
@@ -246,6 +297,22 @@ def list_notes(limit: int = 20) -> list[tuple[str, str]]:
     return rows
 
 
+def save_speaker_embedding(name: str, embedding: bytes) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO speakers (name, embedding) VALUES (?, ?) "
+            "ON CONFLICT(name) DO UPDATE SET embedding = excluded.embedding",
+            (name.strip(), embedding),
+        )
+        conn.commit()
+
+
+def load_speaker_embeddings() -> dict[str, bytes]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT name, embedding FROM speakers").fetchall()
+    return {name: blob for name, blob in rows}
+
+
 __all__ = [
     "add_fact",
     "list_facts",
@@ -254,11 +321,15 @@ __all__ = [
     "list_pending_reminders",
     "list_due_reminders",
     "mark_reminder_done",
+    "list_due_reminders_telegram",
+    "mark_reminder_telegram_sent",
     "add_automation_rule",
     "list_automation_rules",
     "delete_automation_rule",
     "get_due_automation_rules",
     "mark_automation_rule_run",
+    "get_due_automation_rules_telegram",
+    "mark_automation_rule_telegram_run",
     "log_interaction",
     "get_interactions_since",
     "add_episode",
@@ -270,4 +341,6 @@ __all__ = [
     "clear_shopping_list",
     "add_note",
     "list_notes",
+    "save_speaker_embedding",
+    "load_speaker_embeddings",
 ]

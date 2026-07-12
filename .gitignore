@@ -12,9 +12,12 @@ wheels/
 # Runtime data
 memory/*.db
 config/voices/
+config/models/
 config/searxng/settings.yml
 
 # Secrets
 .env
 *.session
 *.session-journal
+config/wolt_session.json
+config/wolt_chrome_profile/
