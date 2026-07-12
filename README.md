@@ -1,12 +1,35 @@
+<div align="center">
+
 # IDUS
 
-A fully local, offline-capable voice assistant for the home — your own "Jarvis," built from
-open-source pieces, running on your own hardware. No cloud APIs, no subscriptions, no data
-leaving the house except for web searches you ask it to make.
+**A fully local voice assistant for the home — your own Jarvis, built from open-source pieces,
+running on hardware you control.**
+
+No cloud APIs. No subscriptions. Nothing leaves the house except web searches you ask it to make.
+
+![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Local-only](https://img.shields.io/badge/cloud%20dependencies-zero-3F7D5E)
+![LLM](https://img.shields.io/badge/LLM-Ollama%20%2F%20Qwen2.5-1a1a1a)
+![Status](https://img.shields.io/badge/status-active%20development-0A84FF)
+
+</div>
+
+---
 
 Talk to it out loud, or through Telegram from anywhere. It remembers what you tell it, sets
 reminders and recurring routines on its own, and asks before doing anything that touches the
 outside world.
+
+## Contents
+
+- [Why local?](#why-local)
+- [What it can do today](#what-it-can-do-today)
+- [What it can't do yet](#what-it-cant-do-yet)
+- [Architecture](#architecture)
+- [Stack](#stack)
+- [Getting started](#getting-started)
+- [Roadmap status](#roadmap-status)
+- [A note on scope](#a-note-on-scope)
 
 ## Why local?
 
@@ -27,14 +50,14 @@ looks it up; if it mishears you, it says so instead of guessing.
 
 **Tool use** — the model doesn't just talk, it acts:
 
-- Time, date, calculator, timers
-- Web search (self-hosted, no API keys, no tracking)
-- Shopping lists and voice notes
-- Reminders that survive a restart and reach you by voice *or* Telegram, whichever you're near
-- A general-purpose automation engine — "every morning at 8, tell me the weather" becomes a
-  standing rule, not a one-off answer
-- Cooking assistant (step-by-step recipes with per-step timers), on-the-fly translation, jokes
-  and trivia — all with zero extra plumbing, just the model doing what models do
+| | |
+|---|---|
+| Time, date, calculator, timers | Web search — self-hosted, no API keys, no tracking |
+| Shopping lists & voice notes | Reminders — survive a restart, reach you by voice *or* Telegram |
+| Automation engine — recurring rules, not one-off answers | Cooking assistant — step-by-step, with per-step timers |
+| On-the-fly translation | Jokes and trivia on request |
+
+The bottom row needed zero new code — just a model doing what models do.
 
 **Memory that grows on its own** — long-term facts persist across restarts, and once a day
 IDUS quietly reviews the last day's conversations, writes itself a short summary, and picks
@@ -54,15 +77,12 @@ complete them simply doesn't exist. That's a design choice, not a missing featur
 
 ## What it can't do yet
 
-- **Control smart home devices** — no hardware purchased yet, this is next once it is
-- **Play media on the TV, react to your presence, run multi-step chains reliably** — all
-  waiting on the same hardware decision, or on a bigger local model than a modest GPU can run
-- **Place a real food order** — the cart-building logic is written and tested end-to-end, but
-  the delivery platform's bot detection blocks automated login. Rather than defeat that
-  protection, IDUS stops at "cart's ready, go finish it yourself."
-- **Message your contacts as you** — reading a message on Telegram is easy; sending one *as
-  you* to someone who's never talked to the bot needs your own Telegram account automated,
-  which is a deliberate, not-yet-made decision (see the project notes)
+| Not yet | Why |
+|---|---|
+| Control smart home devices | No hardware purchased yet — next once it is |
+| Media on the TV, presence awareness, reliable multi-step chains | Same hardware decision, or a bigger local model than a modest GPU can run |
+| Place a real food order | Cart-building works end-to-end; the delivery platform's bot detection blocks automated login, and defeating that wasn't a line worth crossing — it stops at "cart's ready, go finish it" |
+| Message your contacts as you | Sending *as you* to someone who's never messaged the bot needs your own Telegram account automated — a deliberate, not-yet-made call |
 
 ## Architecture
 
@@ -75,11 +95,11 @@ scripts/   entry points — the voice loop, the Telegram bot, and test/setup uti
 config/    downloaded models and voices, local service configuration
 ```
 
-The split between `voice/` (how you talk to it) and `brain/` (what it thinks) is deliberate —
-the Telegram bot is a second front door onto the *same* brain, not a separate assistant, and
-a future phone-companion channel can be added the same way without touching the core.
+> The split between `voice/` (how you talk to it) and `brain/` (what it thinks) is deliberate —
+> the Telegram bot is a second front door onto the *same* brain, not a separate assistant, and
+> a future phone-companion channel can be added the same way without touching the core.
 
-### Stack
+## Stack
 
 | Piece | What it does | Why this one |
 |---|---|---|
@@ -121,13 +141,41 @@ Individual `scripts/*_test.py` files exercise each component (VAD, STT, TTS, wak
 memory, reminders, automations) in isolation — useful when something's not behaving and you
 want to know which layer to blame.
 
-## Status
+## Roadmap status
 
-Actively developed, evolving fast. Ten of the roadmap's sixteen stages are complete and
-verified against real hardware and a real voice, not just unit-tested in isolation; several
-more are partially done, blocked only on buying a dedicated always-on machine. The project's
-full stage-by-stage plan, decisions, and the reasoning behind them live in the maintainer's
-running notes rather than in this file — ask if you want the details.
+<div align="center">
+
+![Done](https://img.shields.io/badge/-9%20done-3F7D5E) ![Partial](https://img.shields.io/badge/-5%20partial-A8781F) ![Blocked](https://img.shields.io/badge/-2%20blocked%20on%20hardware-8B5E4A)
+
+</div>
+
+<details>
+<summary><b>Full stage-by-stage breakdown</b></summary>
+<br>
+
+| # | Stage | Status |
+|---|---|---|
+| 0 | Environment & tooling | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 1 | Voice loop (wake word → STT → TTS) | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 2 | Local LLM connection | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 3 | Tool-calling | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 4 | Internet access (search) | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 5 | Long-term memory | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 6 | Smart home foundation | ![blocked](https://img.shields.io/badge/-blocked%20on%20hardware-8B5E4A) |
+| 7 | Reminders, media, scenes | ![partial](https://img.shields.io/badge/-partial-A8781F) reminders done; media/scenes need devices |
+| 8 | UX & reliability | ![partial](https://img.shields.io/badge/-partial-A8781F) latency + degradation done; barge-in needs a headset |
+| 9 | Security & privacy | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 10 | Packaging & autostart | ![blocked](https://img.shields.io/badge/-blocked%20on%20hardware-8B5E4A) Ubuntu-specific |
+| 11 | Remote access (Telegram) | ![done](https://img.shields.io/badge/-done-3F7D5E) |
+| 12 | Agentic core | ![partial](https://img.shields.io/badge/-partial-A8781F) confirmation gate done; full planner needs a bigger model |
+| 13 | Media stack | ![blocked](https://img.shields.io/badge/-blocked%20on%20hardware-8B5E4A) |
+| 14 | External actions (ordering, messaging) | ![partial](https://img.shields.io/badge/-partial-A8781F) owner-messaging done; third-party & ordering blocked |
+| 15 | Memory 2.0 & proactivity | ![partial](https://img.shields.io/badge/-partial-A8781F) episodes + reflection done; procedural memory needs devices |
+
+Everything marked **done** has been verified against real hardware and a real voice, not just
+tested in isolation.
+
+</details>
 
 ## A note on scope
 
